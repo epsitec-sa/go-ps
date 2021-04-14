@@ -2,6 +2,7 @@ package ps
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -19,7 +20,7 @@ func testFindProcess(t *testing.T, name string) Process {
 
 	if name != "" {
 		assert.Equal(t, name, proc.Executable())
-		path, err := proc.Path()
+		path, err := proc.Path(false)
 		require.NoError(t, err)
 		t.Logf("Path: %s", path)
 		assert.True(t, strings.HasSuffix(path, string(os.PathSeparator)+name))
@@ -69,4 +70,19 @@ func TestFindProcessesWithFnError(t *testing.T) {
 	ps, err = findProcessesWithFn(func() ([]Process, error) { return nil, nil }, nil, 0)
 	require.Nil(t, ps)
 	require.Nil(t, err)
+}
+
+func TestFindProcessPathResolvingLinks(t *testing.T) {
+	psProcs, err := Processes()
+	require.NoError(t, err)
+
+	for _, proc := range psProcs {
+		path, err := proc.Path(true)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		}
+		if path != "" {
+			fmt.Printf("%s\n", path)
+		}
+	}
 }
