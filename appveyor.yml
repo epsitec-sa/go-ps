@@ -4,7 +4,7 @@ environment:
     GOPATH: c:\work\
 
 # clone path
-clone_folder: c:\work\src\github.com\keybase\go-ps
+clone_folder: c:\work\src\github.com\epsitec-sa\go-ps
 
 # build platform, i.e. x86, x64, Any CPU. This setting is optional.
 #platform: Any CPU
