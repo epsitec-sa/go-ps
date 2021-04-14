@@ -17,6 +17,8 @@ var (
 	procProcess32Next            = modKernel32.NewProc("Process32NextW")
 	procModule32First            = modKernel32.NewProc("Module32FirstW")
 	procModule32Next             = modKernel32.NewProc("Module32NextW")
+	procOpenProcess              = modKernel32.NewProc("OpenProcess")
+	procGetProcessImageFileName  = modKernel32.NewProc("GetProcessImageFileNameW")
 )
 
 // Some constants from the Windows API
@@ -62,15 +64,19 @@ func (p *WindowsProcess) Executable() string {
 }
 
 // Path returns path to process executable
-func (p *WindowsProcess) Path() (string, error) {
-	processModules, err := modules(p.pid)
-	if err != nil {
-		return "", err
+func (p *WindowsProcess) Path(resolveSymlinks bool) (string, error) {
+	if resolveSymlinks {
+		return imageFileName(p.pid)
+	} else {
+		processModules, err := modules(p.pid)
+		if err != nil {
+			return "", err
+		}
+		if len(processModules) == 0 {
+			return "", fmt.Errorf("No modules found for process")
+		}
+		return processModules[0].path, nil
 	}
-	if len(processModules) == 0 {
-		return "", fmt.Errorf("No modules found for process")
-	}
-	return processModules[0].path, nil
 }
 
 func ptrToString(c []uint16) string {
@@ -193,4 +199,24 @@ func modules(pid int) ([]windowsModule, error) {
 	}
 
 	return results, nil
+}
+
+func imageFileName(pid int) (string, error) {
+	handle, _, _ := procOpenProcess.Call(
+		0x00100000, // SYNCHRONIZE
+		0,          // FALSE
+		uintptr(uint32(pid)))
+	if handle <= 0 {
+		return "", syscall.GetLastError()
+	}
+	defer procCloseHandle.Call(handle)
+
+	var imageFileName [MAX_PATH]uint16
+	imageFileNameSize := uint32(unsafe.Sizeof(imageFileName))
+	ret, _, _ := procGetProcessImageFileName.Call(handle, uintptr(unsafe.Pointer(&imageFileName)), uintptr(imageFileNameSize))
+	if ret == 0 {
+		return "", fmt.Errorf("Error retrieving image file name")
+	}
+
+	return ptrToString(imageFileName[:]), nil
 }

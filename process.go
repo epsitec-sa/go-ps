@@ -24,7 +24,7 @@ type Process interface {
 
 	// Path is full path to the executable. The path may be unavailable if the
 	// exectuable was deleted from the system while it was still running.
-	Path() (string, error)
+	Path(resolveSymlinks bool) (string, error)
 }
 
 type processesFn func() ([]Process, error)

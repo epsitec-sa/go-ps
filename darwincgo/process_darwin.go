@@ -45,7 +45,7 @@ func (p *DarwinProcess) Executable() string {
 }
 
 // Path returns path to process executable
-func (p *DarwinProcess) Path() (string, error) {
+func (p *DarwinProcess) Path(resolveSymlinks bool) (string, error) {
 	return p.path, nil
 }
 
