@@ -6,19 +6,21 @@ import (
 	"fmt"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // Windows API functions
 var (
-	modKernel32                  = syscall.NewLazyDLL("kernel32.dll")
-	procCloseHandle              = modKernel32.NewProc("CloseHandle")
-	procCreateToolhelp32Snapshot = modKernel32.NewProc("CreateToolhelp32Snapshot")
-	procProcess32First           = modKernel32.NewProc("Process32FirstW")
-	procProcess32Next            = modKernel32.NewProc("Process32NextW")
-	procModule32First            = modKernel32.NewProc("Module32FirstW")
-	procModule32Next             = modKernel32.NewProc("Module32NextW")
-	procOpenProcess              = modKernel32.NewProc("OpenProcess")
-	procGetProcessImageFileName  = modKernel32.NewProc("GetProcessImageFileNameW")
+	modKernel32                   = syscall.NewLazyDLL("kernel32.dll")
+	procCloseHandle               = modKernel32.NewProc("CloseHandle")
+	procCreateToolhelp32Snapshot  = modKernel32.NewProc("CreateToolhelp32Snapshot")
+	procProcess32First            = modKernel32.NewProc("Process32FirstW")
+	procProcess32Next             = modKernel32.NewProc("Process32NextW")
+	procModule32First             = modKernel32.NewProc("Module32FirstW")
+	procModule32Next              = modKernel32.NewProc("Module32NextW")
+	procOpenProcess               = modKernel32.NewProc("OpenProcess")
+	procQueryFullProcessImageName = modKernel32.NewProc("QueryFullProcessImageNameW")
 )
 
 // Some constants from the Windows API
@@ -202,21 +204,23 @@ func modules(pid int) ([]windowsModule, error) {
 }
 
 func imageFileName(pid int) (string, error) {
-	handle, _, _ := procOpenProcess.Call(
-		0x00100000, // SYNCHRONIZE
-		0,          // FALSE
+	handle, _, err := procOpenProcess.Call(
+		windows.PROCESS_QUERY_LIMITED_INFORMATION,
+		0, // FALSE
 		uintptr(uint32(pid)))
 	if handle <= 0 {
-		return "", syscall.GetLastError()
+		return "", fmt.Errorf("error opening process handle: %v", err)
 	}
 	defer procCloseHandle.Call(handle)
 
-	var imageFileName [MAX_PATH]uint16
-	imageFileNameSize := uint32(unsafe.Sizeof(imageFileName))
-	ret, _, _ := procGetProcessImageFileName.Call(handle, uintptr(unsafe.Pointer(&imageFileName)), uintptr(imageFileNameSize))
+	var bufferSize uint32 = 32 * 1024
+	buffer := make([]uint16, bufferSize)
+	ret, _, err := procQueryFullProcessImageName.Call(handle, 0,
+		uintptr(unsafe.Pointer(&buffer[0])),
+		uintptr(unsafe.Pointer(&bufferSize)))
 	if ret == 0 {
-		return "", fmt.Errorf("Error retrieving image file name")
+		return "", fmt.Errorf("error querying image file name: %v", err)
 	}
 
-	return ptrToString(imageFileName[:]), nil
+	return ptrToString(buffer[:]), nil
 }
