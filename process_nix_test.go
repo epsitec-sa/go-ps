@@ -26,7 +26,7 @@ func testProcessPath(t *testing.T, procPath string) Process {
 
 	require.Equal(t, 1, len(procs))
 	proc := procs[0]
-	path, err := proc.Path()
+	path, err := proc.Path(false)
 	require.NoError(t, err)
 	require.Equal(t, procPath, path)
 	return proc
@@ -84,7 +84,7 @@ func copyFile(sourcePath string, destinationPath string, mode os.FileMode) error
 }
 
 func matchPath(t *testing.T, p Process, match string) bool {
-	path, err := p.Path()
+	path, err := p.Path(false)
 	if err != nil {
 		t.Logf("Error trying to get path: %s", err)
 		return false

@@ -36,7 +36,7 @@ func (p *UnixProcess) PPid() int {
 
 // Executable returns process executable name
 func (p *UnixProcess) Executable() string {
-	path, err := p.Path()
+	path, err := p.Path(false)
 	if err != nil {
 		// Fall back to binary name which might be truncated
 		return p.binary
@@ -45,7 +45,7 @@ func (p *UnixProcess) Executable() string {
 }
 
 // Path returns path to process executable
-func (p *UnixProcess) Path() (string, error) {
+func (p *UnixProcess) Path(resolveSymlinks bool) (string, error) {
 	return filepath.EvalSymlinks(fmt.Sprintf("/proc/%d/exe", p.pid))
 }
 

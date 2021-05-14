@@ -40,7 +40,7 @@ func (p *DarwinProcess) PPid() int {
 
 // Executable returns process executable name
 func (p *DarwinProcess) Executable() string {
-	path, _ := p.Path()
+	path, _ := p.Path(false)
 	return filepath.Base(path)
 }
 
